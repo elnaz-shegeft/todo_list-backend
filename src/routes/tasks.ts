@@ -1,58 +1,89 @@
 import express from "express";
 import pool from "../db";
+import { Task } from "../entities/task";
+import { AppDataSource } from "../data-source";
+import { Raw } from "typeorm";
 
 const router = express.Router();
+
+const taskRepository = AppDataSource.getRepository(Task);
 
 router.post("/", async (req, res) => {
   const { title, dueDate, important, difficulty, label } = req.body;
 
-  const result = await pool.query(
-    "INSERT INTO tasks (title, due_date, important, difficulty, label) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-[title, dueDate, important, difficulty, label]
-  );
+  const task = taskRepository.create({
+    title,
+    dueDate,
+    important,
+    difficulty,
+    label,
+  });
 
-  res.json(result.rows[0]);
+  const savedTask = await taskRepository.save(task);
+
+  res.json(savedTask);
 });
 
 router.get("/", async (req, res) => {
-  const result = await pool.query("SELECT * FROM tasks");
+  const tasks = await taskRepository.find();
 
-  res.json(result.rows);
+  res.json(tasks);
 });
 
-router.get ("/today", async (req, res) => {
-const result = await pool.query (
-  "SELECT * FROM tasks WHERE due_date = CURRENT_DATE AND completed = false"
-);
-res.json (result.rows);
+router.get("/today", async (req, res) => {
+  const tasks = await taskRepository.find({
+    where: {
+      dueDate: Raw((alias) => `${alias} = CURRENT_DATE`),
+      completed: false,
+    },
+  });
+
+  res.json(tasks);
 });
 
 router.get ("/upcoming", async (req, res) => {
-  const result = await pool.query (
-    "SELECT * FROM  tasks WHERE due_date > CURRENT_DATE AND completed = false"
-  );
-  res.json(result.rows);
+  const tasks = await taskRepository.find({
+    where: {
+      dueDate: Raw((alias) => `${alias} > CURRENT_DATE`),
+      completed: false,
+    },
+  });
+
+  res.json(tasks);
 });
 
 router.get ("/completed", async (req, res) => {
-  const result = await pool.query (
-    "SELECT * FROM tasks WHERE completed = true"
-  );
+  const tasks = await taskRepository.find({
+    where: {
+      completed: true,
+    },
+  });
+
+  res.json(tasks);
 });
+   
 
 router.get ("/important", async (req, res) => {
-  const result = await pool.query(
-    "SELECT * FROM tasks WHERE important = true"
-  );
-  res.json(result.rows);
+  const tasks = await taskRepository.find({
+    where: {
+      important: true,
+    },
+  });
+    
+  res.json(tasks);
 });
 
 router.get ("/overdue", async (req, res) => {
-const result = await pool.query(
-  "SELECT * FROM tasks WHERE due_date < CURRENT_DATE AND completed = false"
-);
-res.json(result.rows);
+const tasks = await taskRepository.find({
+  where: {
+    dueDate: Raw((alias)=> `${alias} < CURRENT_DATE`),
+    completed: false,
+  },
 });
+
+res.json(tasks);
+});
+
 router.get("/labels", async (req, res) => {
   res.json([
     "work",
@@ -63,59 +94,98 @@ router.get("/labels", async (req, res) => {
   ]);
 });
 router.get ("/work", async (req, res) => {
-  const result = await pool.query (
-    "SELECT * FROM tasks WHERE label = 'work'"
-  );
-  res.json(result.rows);
+ const tasks = await taskRepository.find({
+    where: {
+      label: "work",
+    },
 });
-router.get("/study", async (req, res) => {
-  const result = await pool.query(
-    "SELECT * FROM tasks WHERE label = 'study'"
-  );
 
-  res.json(result.rows);
+  res.json(tasks);
 });
+
+router.get("/study", async (req, res) => {
+  const tasks = await taskRepository.find({
+    where: {
+      label: "study",
+    },
+  });
+
+  res.json(tasks);
+});
+
 router.get ("/personal", async (req, res) => {
-  const result = await pool.query (
-    "SELECT * FROM tasks WHERE label = 'personal'"
-  );
-  res.json(result.rows);
+  const tasks = await taskRepository.find({
+    where: {
+      label: "personal",
+    },
+});
+
+  res.json(tasks);
 });
 router.get ("/health", async (req, res) => {
-  const result = await pool.query (
-    "SELECT * FROM tasks WHERE label = 'health'"
-  );
-  res.json(result.rows);
+  const tasks = await taskRepository.find({
+    where: {
+      label: "health",
+    },
+  });
+
+  res.json(tasks);
 });
+
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
-  const result = await pool.query(
-    "SELECT * FROM tasks WHERE id = $1",
-    [id]
-  );
+  const task = await taskRepository.findOne({
+    where: {
+      id: Number(id),
+    },
+  });
 
-  res.json(result.rows[0]);
+  res.json(task);
 });
+
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
+  
+  const task = await taskRepository.findOne({
+    where: {
+      id: Number(id),
+    },
+  });
+  if (!task) {
+  return res.status(404).json({
+    message: "Task not found",
+  });
+}
   const { title, dueDate, completed, important, difficulty, label } = req.body;
+  task.title = title;
+task.dueDate = dueDate;
+task.completed = completed;
+task.important = important;
+task.difficulty = difficulty;
+task.label = label;
+const updatedTask = await taskRepository.save(task);
 
-  const result = await pool.query(
-"UPDATE tasks SET title = $1, due_date = $2, completed = $3, important = $4, difficulty = $5, label = $6 WHERE id = $7 RETURNING *",
-[title, dueDate, completed, important, difficulty, label, id]
-  );
-
-  res.json(result.rows[0]);
+res.json(updatedTask);
 });
 router.delete("/:id", async(req, res) => {
   const { id } = req.params;
-  const result = await pool.query (
-    "DELETE FROM tasks WHERE id = $1 RETURNING *",
-  [id]
-  );
-  res.json(result.rows[0]);
-});
+  const task = await taskRepository.findOne({
+    where: {
+      id: Number(id),
+    },
+  });
+ if (!task) {
+  return res.status(404).json({
+    message: "Task not found",
+  });
+}
 
+await taskRepository.remove(task);
+
+res.json({
+  message: "Task deleted",
+});
+});
 
 export default router;
