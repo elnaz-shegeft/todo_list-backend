@@ -1,21 +1,15 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { Task } from "./entities/task";
+import { User } from "./entities/user";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
-  host: "localhost",
-  port: 5432,
-  username: "el",
-  password: "jooje_toosi",
-  database: "todo_list",
-  entities: [Task],
+  host: process.env.DB_HOST ?? "localhost",
+  port: Number(process.env.DB_PORT ?? 5432),
+  username: process.env.DB_USER ?? "postgres",
+  password: process.env.DB_PASSWORD ?? "123456",
+  database: process.env.DB_NAME ?? "todo",
+  entities: [Task, User],
   synchronize: true,
 });
-AppDataSource.initialize()
-  .then(() => {
-    console.log("TypeORM connected");
-  })
-  .catch((error) => {
-    console.error("TypeORM connection failed:", error);
-  });

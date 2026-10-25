@@ -1,9 +1,11 @@
 import { Pool } from "pg";
-const pool = new Pool ({
-user: "el",
-host: "localhost",
-database: "todo_list",
-password: "jooje_toosi",
-port: 5432,
+
+const pool = new Pool({
+    user: "postgres",
+    host: "localhost",
+    database: "todo",
+    password: "123456",
+    port: 5432,
 });
+
 export default pool; 
